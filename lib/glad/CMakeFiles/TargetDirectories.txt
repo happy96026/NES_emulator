@@ -1,0 +1,4 @@
+/Users/adithasan/Desktop/glad/CMakeFiles/rebuild_cache.dir
+/Users/adithasan/Desktop/glad/CMakeFiles/edit_cache.dir
+/Users/adithasan/Desktop/glad/CMakeFiles/glad.dir
+/Users/adithasan/Desktop/glad/CMakeFiles/glad-generate-files.dir
