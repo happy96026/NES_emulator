@@ -6,7 +6,11 @@
 #ifndef NES_EMULATOR_C6502_H
 #define NES_EMULATOR_C6502_H
 
-#include <cstdint>
+//#include <cstdint>
+//#include <iostream>
+#include <string>
+#include <vector>
+//#include <stdio.h>
 //#include "bus.h"
 //
 class Bus;
@@ -46,8 +50,8 @@ public:
     uint8_t ABY();
     uint8_t IMP();
     uint8_t REL();
-    uint8_t INX();
-    uint8_t INY();
+    uint8_t IZX();
+    uint8_t IZY();
     uint8_t IND();
 
     // Opcodes
@@ -137,8 +141,17 @@ public:
     uint8_t XXX();
 
     void clock();
+    void reset();
+    void irq();
+    void nmi();
 
+    uint8_t fetch();
+    uint8_t fetched = 0x00;
 
+    uint16_t addrAbs = 0x0000;
+    uint16_t addrRel = 0x0000;
+    uint8_t opcode = 0x00;
+    uint8_t cycles = 0;
 
 private:
     Bus* bus = nullptr;
@@ -148,6 +161,14 @@ private:
     uint8_t GetFlag(FLAGS6502 flag);
     void SetFlag(FLAGS6502 flag, bool v);
 
+    struct INSTRUCTION{
+        std::string name;
+        uint8_t (C6502::*operate)(void) = nullptr;
+        uint8_t (C6502::*addrmode)(void) = nullptr;
+        uint8_t cycles = 0;
+    };
+
+    std::vector<INSTRUCTION> lookup;
 };
 
 
