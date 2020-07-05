@@ -8,10 +8,11 @@
 
 //#include <cstdint>
 //#include <iostream>
-#include <string>
 #include <vector>
+#include <string>
 //#include <stdio.h>
 //#include "bus.h"
+
 //
 class Bus;
 
@@ -38,7 +39,23 @@ public:
     uint16_t pc = 0x0000; // Program Counter
     uint8_t  sr = 0x00;   // Status Register
 
+    void clock();
+    void reset();
+    void irq();
+    void nmi();
+
     void ConnectBus(Bus* busPtr) { bus = busPtr; };
+
+private:
+
+
+    uint8_t fetch();
+    uint8_t fetched = 0x00;
+
+    uint16_t addrAbs = 0x0000;
+    uint16_t addrRel = 0x0000;
+    uint8_t opcode = 0x00;
+    uint8_t cycles = 0;
 
     // Addressing Modes
     uint8_t IMM();
@@ -140,20 +157,6 @@ public:
     // Illegal opcode
     uint8_t XXX();
 
-    void clock();
-    void reset();
-    void irq();
-    void nmi();
-
-    uint8_t fetch();
-    uint8_t fetched = 0x00;
-
-    uint16_t addrAbs = 0x0000;
-    uint16_t addrRel = 0x0000;
-    uint8_t opcode = 0x00;
-    uint8_t cycles = 0;
-
-private:
     Bus* bus = nullptr;
     uint8_t read(uint16_t address);
     void write(uint16_t address, uint8_t data);
@@ -169,6 +172,7 @@ private:
     };
 
     std::vector<INSTRUCTION> lookup;
+//    lookup
 };
 
 

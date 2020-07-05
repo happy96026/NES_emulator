@@ -9,8 +9,8 @@
 #include <cstdint>
 #include "C6502.h"
 #include <vector>
+#include <map>
 
-#define a 64
 class Bus {
 
 public:
