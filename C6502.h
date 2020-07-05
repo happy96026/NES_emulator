@@ -6,8 +6,8 @@
 #ifndef NES_EMULATOR_C6502_H
 #define NES_EMULATOR_C6502_H
 
-//#include <cstdint>
-//#include <iostream>
+#include <cstdint>
+#include <iostream>
 #include <vector>
 #include <string>
 //#include <stdio.h>

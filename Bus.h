@@ -1,7 +1,7 @@
 //
 // Created by Andrew Park on 2020-07-03.
 //
-//#pragma once
+#pragma once
 
 #ifndef NES_EMULATOR_BUS_H
 #define NES_EMULATOR_BUS_H
