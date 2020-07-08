@@ -54,6 +54,8 @@ void C6502::clock() {
     cycles--;
 }
 
+// Instructions
+
 void C6502::reset() {
 
 }
@@ -67,7 +69,10 @@ void C6502::nmi() {
 }
 
 uint8_t C6502::fetch() {
-    return 0;
+    if(!(lookup[opcode].addrmode == &C6502::IMP)){
+        fetched = read(addrAbs);
+    }
+    return fetched;
 }
 
 uint8_t C6502::GetFlag(C6502::FLAGS6502 flag) {
@@ -79,6 +84,7 @@ void C6502::SetFlag(C6502::FLAGS6502 flag, bool v) {
     else sr &= flag;
 }
 
+// Addressing Modes
 
 uint8_t C6502::IMM() {
     addrAbs = pc++;
@@ -141,10 +147,15 @@ uint8_t C6502::ABY() {
 }
 
 uint8_t C6502::IMP() {
+    fetched = ar;
     return 0;
 }
 
 uint8_t C6502::REL() {
+    addrRel = read(pc++);
+    if(addrRel & 0x80){
+        addrRel |= 0xFF00;
+    }
     return 0;
 }
 
@@ -155,12 +166,25 @@ uint8_t C6502::IZX() {
     uint16_t high = read((uint16_t)(t+(uint16_t)x+1) & 0x00FF);
 
     addrAbs = (high << 8) | low;
-    
+
     return 0;
 }
 
 uint8_t C6502::IZY() {
-    return 0;
+    uint16_t t = read(pc++);
+
+    uint16_t low = read(t & 0x00FF);
+    uint16_t high = read((t+1) & 0x00FF);
+
+    addrAbs = (high << 8) | low;
+    addrAbs += y;
+
+    if((addrAbs & 0x00FF) != (high << 8)){
+        return 1;
+    }
+    else{
+        return 0;
+    }
 }
 
 uint8_t C6502::IND() {
@@ -179,12 +203,18 @@ uint8_t C6502::IND() {
     return 0;
 }
 
+// Opcodes
+
 uint8_t C6502::ADC() {
     return 0;
 }
 
 uint8_t C6502::AND() {
-    return 0;
+    fetch();
+    ar = ar & fetched;
+    SetFlag(Z, ar == 0x00);
+    SetFlag(N, ar & 0x80);
+    return 1;
 }
 
 uint8_t C6502::ASL() {
