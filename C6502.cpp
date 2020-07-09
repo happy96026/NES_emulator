@@ -54,18 +54,63 @@ void C6502::clock() {
     cycles--;
 }
 
-// Instructions
+// Interrupts
 
 void C6502::reset() {
+    ar = 0;
+    x = 0;
+    y = 0;
+    sp = 0xFD;
+    sr = 0x00 | U;
 
+    addrAbs = 0xFFFC;
+    uint16_t low = read(addrAbs + 0);
+    uint16_t high = read(addrAbs + 1);
+
+    pc = (high << 8) | low;
+
+    addrRel = 0x0000;
+    addrAbs = 0x0000;
+    fetched = 0x00;
+
+    cycles = 8;
 }
 
 void C6502::irq() {
+    if (GetFlag(I) == 0){
+        write(0x0100 + sp--, (pc >> 8) & 0x00FF);
+        write(0x0100 + sp--, pc & 0x00FF);
+
+        SetFlag(B, 0);
+        SetFlag(U, 1);
+        SetFlag(I, 1);
+        write(0x0100 + sp--, sr);
+
+        addrAbs = 0xFFFE;
+        uint16_t low = read(addrAbs + 0);
+        uint16_t high = read(addrAbs + 1);
+        pc = (high << 8) | low;
+
+        cycles = 7;
+    }
 
 }
 
 void C6502::nmi() {
+    write(0x0100 + sp--, (pc >> 8) & 0x00FF);
+    write(0x0100 + sp--, pc & 0x00FF);
 
+    SetFlag(B, 0);
+    SetFlag(U, 1);
+    SetFlag(I, 1);
+    write(0x0100 + sp--, sr);
+
+    addrAbs = 0xFFFA;
+    uint16_t low = read(addrAbs + 0);
+    uint16_t high = read(addrAbs + 1);
+    pc = (high << 8) | low;
+
+    cycles = 8;
 }
 
 uint8_t C6502::fetch() {
@@ -206,7 +251,16 @@ uint8_t C6502::IND() {
 // Opcodes
 
 uint8_t C6502::ADC() {
-    return 0;
+    fetch();
+
+    // Check for Overflow
+    uint16_t tmp = (uint16_t)ar + (uint16_t)fetched + (uint16_t)GetFlag(C);
+    SetFlag(C, tmp > 255);
+    SetFlag(Z, (tmp & 0x00FF) == 0);
+    SetFlag(N, tmp & 0x80);
+    SetFlag(V, (~((uint16_t)ar ^ (uint16_t)fetched) & ((uint16_t)ar ^ (uint16_t)tmp)) & 0x0080);
+    ar = tmp & 0x00FF;
+    return 1;
 }
 
 uint8_t C6502::AND() {
@@ -230,14 +284,42 @@ uint8_t C6502::BBS() {
 }
 
 uint8_t C6502::BCC() {
+    if(GetFlag(C) == 0){
+        cycles++;
+        addrAbs = pc + addrRel;
+        if((addrAbs & 0xFF00) != (pc & 0xFF00)){
+            cycles++;
+        }
+        pc = addrAbs;
+    }
     return 0;
 }
 
+/* From data sheet
+ * Add 1 to N if branch occurs to same page
+ * Add 2 to N if branch occurs to different page
+ */
 uint8_t C6502::BCS() {
+    if(GetFlag(C) == 1){
+        cycles++;
+        addrAbs = pc + addrRel;
+        if((addrAbs & 0xFF00) != (pc & 0xFF00)){
+            cycles++;
+        }
+        pc = addrAbs;
+    }
     return 0;
 }
 
 uint8_t C6502::BEQ() {
+    if(GetFlag(Z) == 1){
+        cycles++;
+        addrAbs = pc + addrRel;
+        if((addrAbs & 0xFF00) != (pc & 0xFF00)){
+            cycles++;
+        }
+        pc = addrAbs;
+    }
     return 0;
 }
 
@@ -246,14 +328,38 @@ uint8_t C6502::BIT() {
 }
 
 uint8_t C6502::BMI() {
+    if(GetFlag(N) == 1){
+        cycles++;
+        addrAbs = pc + addrRel;
+        if((addrAbs & 0xFF00) != (pc & 0xFF00)){
+            cycles++;
+        }
+        pc = addrAbs;
+    }
     return 0;
 }
 
 uint8_t C6502::BNE() {
+    if(GetFlag(Z) == 0){
+        cycles++;
+        addrAbs = pc + addrRel;
+        if((addrAbs & 0xFF00) != (pc & 0xFF00)){
+            cycles++;
+        }
+        pc = addrAbs;
+    }
     return 0;
 }
 
 uint8_t C6502::BPL() {
+    if(GetFlag(N) == 0){
+        cycles++;
+        addrAbs = pc + addrRel;
+        if((addrAbs & 0xFF00) != (pc & 0xFF00)){
+            cycles++;
+        }
+        pc = addrAbs;
+    }
     return 0;
 }
 
@@ -266,26 +372,46 @@ uint8_t C6502::BRK() {
 }
 
 uint8_t C6502::BVC() {
+    if(GetFlag(V) == 0){
+        cycles++;
+        addrAbs = pc + addrRel;
+        if((addrAbs & 0xFF00) != (pc & 0xFF00)){
+            cycles++;
+        }
+        pc = addrAbs;
+    }
     return 0;
 }
 
 uint8_t C6502::BVS() {
+    if(GetFlag(V) == 1){
+        cycles++;
+        addrAbs = pc + addrRel;
+        if((addrAbs & 0xFF00) != (pc & 0xFF00)){
+            cycles++;
+        }
+        pc = addrAbs;
+    }
     return 0;
 }
 
 uint8_t C6502::CLC() {
+    SetFlag(C, false);
     return 0;
 }
 
 uint8_t C6502::CLD() {
+    SetFlag(D, false);
     return 0;
 }
 
 uint8_t C6502::CLI() {
+    SetFlag(I, false);
     return 0;
 }
 
 uint8_t C6502::CLV() {
+    SetFlag(V, false);
     return 0;
 }
 
@@ -362,6 +488,8 @@ uint8_t C6502::ORA() {
 }
 
 uint8_t C6502::PHA() {
+    write(0x0100 + sp, ar);
+    sp--;
     return 0;
 }
 
@@ -378,6 +506,10 @@ uint8_t C6502::PHY() {
 }
 
 uint8_t C6502::PLA() {
+    sp++;
+    ar = read(0x0100 + sp);
+    SetFlag(Z, ar == 0x00);
+    SetFlag(N, ar & 0x80);
     return 0;
 }
 
@@ -406,6 +538,12 @@ uint8_t C6502::ROR() {
 }
 
 uint8_t C6502::RTI() {
+    sr = read(0x0100 + ++sp);
+    sr &= ~B;
+    sr &= ~U;
+
+    pc = (uint16_t)read(0x0100 + ++sp);
+    pc |= (uint16_t)read(0x0100 + ++sp) << 8;
     return 0;
 }
 
@@ -414,6 +552,16 @@ uint8_t C6502::RTS() {
 }
 
 uint8_t C6502::SBC() {
+    fetch();
+
+    uint16_t value = (((uint16_t)fetched) ^ 0x00FF);
+
+    uint16_t tmp = (uint16_t)ar + value + (uint16_t)GetFlag(C);
+    SetFlag(C, tmp > 255);
+    SetFlag(Z, (tmp & 0x00FF) == 0);
+    SetFlag(N, tmp & 0x80);
+    SetFlag(V, (~((uint16_t)ar ^ value) & ((uint16_t)ar ^ (uint16_t)tmp)) & 0x0080);
+    ar = tmp & 0x00FF;
     return 0;
 }
 
