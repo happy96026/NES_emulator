@@ -10,10 +10,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
-//#include <stdio.h>
-//#include "bus.h"
 
-//
 class Bus;
 
 class C6502 {

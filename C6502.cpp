@@ -1,11 +1,10 @@
 //
 // Created by Andrew Park on 2020-07-03.
+// http://www.obelisk.me.uk/6502/reference.html
 //
 
 #include "C6502.h"
 #include "Bus.h"
-//#include <cstdint>
-//#include "olc6502.h"
 
 C6502::C6502() {
     using c = C6502;
@@ -263,6 +262,7 @@ uint8_t C6502::ADC() {
     return 1;
 }
 
+// Bitwise AND
 uint8_t C6502::AND() {
     fetch();
     ar = ar & fetched;
@@ -271,7 +271,12 @@ uint8_t C6502::AND() {
     return 1;
 }
 
+// Arithmetic Shift Left
 uint8_t C6502::ASL() {
+    fetch();
+    ar = ar & fetched;
+    SetFlag(Z, ar == 0x00);
+    SetFlag(N, ar & 0x80);
     return 0;
 }
 
@@ -283,6 +288,7 @@ uint8_t C6502::BBS() {
     return 0;
 }
 
+// Branch if Carry Clear
 uint8_t C6502::BCC() {
     if(GetFlag(C) == 0){
         cycles++;
@@ -299,6 +305,7 @@ uint8_t C6502::BCC() {
  * Add 1 to N if branch occurs to same page
  * Add 2 to N if branch occurs to different page
  */
+// Branch if Carry Set
 uint8_t C6502::BCS() {
     if(GetFlag(C) == 1){
         cycles++;
@@ -311,6 +318,7 @@ uint8_t C6502::BCS() {
     return 0;
 }
 
+// Branch if Equal
 uint8_t C6502::BEQ() {
     if(GetFlag(Z) == 1){
         cycles++;
@@ -323,10 +331,17 @@ uint8_t C6502::BEQ() {
     return 0;
 }
 
+
 uint8_t C6502::BIT() {
+    fetch();
+    uint16_t tmp = ar & fetched;
+    SetFlag(Z, (tmp & 0x00FF) == 0x00);
+    SetFlag(N, fetched & (1 << 7));
+    SetFlag(V, fetched & (1 << 6));
     return 0;
 }
 
+// Branch if Negative
 uint8_t C6502::BMI() {
     if(GetFlag(N) == 1){
         cycles++;
@@ -339,6 +354,7 @@ uint8_t C6502::BMI() {
     return 0;
 }
 
+// Branch if Not Equal
 uint8_t C6502::BNE() {
     if(GetFlag(Z) == 0){
         cycles++;
@@ -351,6 +367,7 @@ uint8_t C6502::BNE() {
     return 0;
 }
 
+// Branch if Positive
 uint8_t C6502::BPL() {
     if(GetFlag(N) == 0){
         cycles++;
@@ -367,10 +384,23 @@ uint8_t C6502::BRA() {
     return 0;
 }
 
+// Break
 uint8_t C6502::BRK() {
+    pc++;
+
+    SetFlag(I, 1);
+    write(0x0100 + sp--, (pc >> 8) & 0x00FF);
+    write(0x0100 + sp--, pc & 0x00FF);
+
+    SetFlag(B, 1);
+    write(0x0100 + sp--, sr);
+    SetFlag(B, 0);
+
+    pc = (uint16_t)read(0xFFFE) | ((uint16_t)read(0xFFFF) << 8);
     return 0;
 }
 
+// Branch if Overflow Clear
 uint8_t C6502::BVC() {
     if(GetFlag(V) == 0){
         cycles++;
@@ -383,6 +413,7 @@ uint8_t C6502::BVC() {
     return 0;
 }
 
+// Branch if Overflow Set
 uint8_t C6502::BVS() {
     if(GetFlag(V) == 1){
         cycles++;
@@ -395,105 +426,211 @@ uint8_t C6502::BVS() {
     return 0;
 }
 
+// Clear Carry Flag
 uint8_t C6502::CLC() {
     SetFlag(C, false);
     return 0;
 }
 
+// Clear Decimal Flag
 uint8_t C6502::CLD() {
     SetFlag(D, false);
     return 0;
 }
 
+// Clear Disable-Interrupt Flag (Disable Interrupt)
 uint8_t C6502::CLI() {
     SetFlag(I, false);
     return 0;
 }
 
+// Clear Overflow Flag
 uint8_t C6502::CLV() {
     SetFlag(V, false);
     return 0;
 }
 
+// Compare Accumulator
 uint8_t C6502::CMP() {
-    return 0;
+    fetch();
+    uint16_t tmp = (uint16_t)ar - (uint16_t)fetched;
+    SetFlag(C, ar >= fetched);
+    SetFlag(Z, (tmp & 0x00FF) == 0x0000);
+    SetFlag(N, tmp & 0x0080);
+    return 1;
 }
 
+// Compare X Register
 uint8_t C6502::CPX() {
+    fetch();
+    uint16_t tmp = (uint16_t)x - (uint16_t)fetched;
+    SetFlag(C, x >= fetched);
+    SetFlag(Z, (tmp & 0x00FF) == 0x0000);
+    SetFlag(N, tmp & 0x0080);
     return 0;
 }
 
+// Compare Y Register
 uint8_t C6502::CPY() {
+    fetch();
+    uint16_t tmp = (uint16_t)y - (uint16_t)fetched;
+    SetFlag(C, y >= fetched);
+    SetFlag(Z, (tmp & 0x00FF) == 0x0000);
+    SetFlag(N, tmp & 0x0080);
     return 0;
 }
 
+// Decrement Value at Memory Location
 uint8_t C6502::DEC() {
+    fetch();
+    uint16_t tmp = fetched - 1;
+    write(addrAbs, tmp & 0x00FF);
+    SetFlag(Z, (tmp & 0x00FF) == 0x0000);
+    SetFlag(N, tmp & 0x0080);
     return 0;
 }
 
+// Decrement Value at X Register
 uint8_t C6502::DEX() {
+    x--;
+    SetFlag(Z, x == 0x00);
+    SetFlag(N, x & 0x80);
     return 0;
 }
 
+// Decrement Value at Y Register
 uint8_t C6502::DEY() {
+    y--;
+    SetFlag(Z, y == 0x00);
+    SetFlag(N, y & 0x80);
     return 0;
 }
 
+// Bitwise Logic OR
 uint8_t C6502::EOR() {
+    fetch();
+    ar = ar & fetched;
+    SetFlag(Z, ar == 0x00);
+    SetFlag(N, ar & 0x80);
     return 0;
 }
 
+// Increment Value at Memory Location
 uint8_t C6502::INC() {
+    fetch();
+    uint16_t tmp = fetched + 1;
+    write(addrAbs, tmp & 0x00FF);
+    SetFlag(Z, (tmp & 0x00FF) == 0x0000);
+    SetFlag(N, tmp & 0x0080);
     return 0;
 }
 
+// Increment Value at X Register
 uint8_t C6502::INX() {
+    x++;
+    SetFlag(Z, x == 0x00);
+    SetFlag(N, x & 0x80);
     return 0;
 }
 
+// Increment Value at Y Register
 uint8_t C6502::INY() {
+    y++;
+    SetFlag(Z, y == 0x00);
+    SetFlag(N, y & 0x80);
     return 0;
 }
 
+// Jump to Location
 uint8_t C6502::JMP() {
+    pc = addrAbs;
     return 0;
 }
 
+// Jump to Subroutine
 uint8_t C6502::JSR() {
+    pc--;
+
+    write(0x0100 + sp--, (pc >> 8) & 0x00FF);
+    write(0x0100 + sp--, pc & 0x00FF);
+
+    pc = addrAbs;
     return 0;
 }
 
+// Load Accumulator
 uint8_t C6502::LDA() {
-    return 0;
+    fetch();
+    ar = fetched;
+    SetFlag(Z, ar == 0x00);
+    SetFlag(N, ar & 0x80);
+    return 1;
 }
 
+// Load X Register
 uint8_t C6502::LDX() {
+    fetch();
+    x = fetched;
+    SetFlag(Z, x == 0x00);
+    SetFlag(N, x & 0x80);
     return 0;
 }
 
+// Load Y Register
 uint8_t C6502::LDY() {
+    fetch();
+    y = fetched;
+    SetFlag(Z, y == 0x00);
+    SetFlag(N, y & 0x80);
     return 0;
 }
 
+// Logical Shift Right
 uint8_t C6502::LSR() {
+    fetch();
+    SetFlag(C, fetched & 0x0001);
+    uint16_t tmp = fetched >> 1;
+    SetFlag(Z, (tmp & 0x00FF) == 0x0000);
+    SetFlag(N, tmp & 0x0080);
+
+    if(lookup[opcode].addrmode == &C6502::IMP){
+        ar = tmp & 0x00FF;
+    }
+    else{
+        write(addrAbs, tmp & 0x00FF);
+    }
     return 0;
 }
 
+// No Operation
 uint8_t C6502::NOP() {
+    if(opcode == 0xFC){
+        return 1;
+    }
     return 0;
 }
 
+// Logical Inclusive OR
 uint8_t C6502::ORA() {
+    fetch();
+    ar = ar | fetched;
+    SetFlag(Z, ar == 0x00);
+    SetFlag(N, ar & 0x80);
     return 0;
 }
 
+// Push Accumulator
 uint8_t C6502::PHA() {
     write(0x0100 + sp, ar);
     sp--;
     return 0;
 }
 
+// Push Processor Status
 uint8_t C6502::PHP() {
+    write(0x0100 + sp--, sr | B | U);
+    SetFlag(B, 0);
+    SetFlag(U, 0);
     return 0;
 }
 
@@ -505,6 +642,7 @@ uint8_t C6502::PHY() {
     return 0;
 }
 
+// Pull Accumulator
 uint8_t C6502::PLA() {
     sp++;
     ar = read(0x0100 + sp);
@@ -513,7 +651,11 @@ uint8_t C6502::PLA() {
     return 0;
 }
 
+// Pull Processor Status
 uint8_t C6502::PLP() {
+    sp++;
+    sr = read(0x00 + sp);
+    SetFlag(U, 1);
     return 0;
 }
 
@@ -529,14 +671,39 @@ uint8_t C6502::RMB() {
     return 0;
 }
 
+// Rotate Left
 uint8_t C6502::ROL() {
+    fetch();
+    uint16_t tmp = (uint16_t)(fetched << 1) | GetFlag(C);
+    SetFlag(C, tmp & 0xFF00);
+    SetFlag(Z, (tmp & 0x00FF) == 0x0000);
+    SetFlag(N, tmp & 0x0080);
+    if(lookup[opcode].addrmode == &C6502::IMP){
+        ar = tmp & 0x00FF;
+    }
+    else{
+        write(addrAbs, tmp & 0x00FF);
+    }
     return 0;
 }
 
+// Rotate Right
 uint8_t C6502::ROR() {
+    fetch();
+    uint16_t tmp = (uint16_t)(fetched << 7) | (fetched >> 1);
+    SetFlag(C, fetched & 0x01);
+    SetFlag(Z, (tmp & 0x00FF) == 0x00);
+    SetFlag(N, tmp & 0x0080);
+    if(lookup[opcode].addrmode == &C6502::IMP){
+        ar = tmp & 0x00FF;
+    }
+    else{
+        write(addrAbs, tmp & 0x00FF);
+    }
     return 0;
 }
 
+// Return from Interrupt
 uint8_t C6502::RTI() {
     sr = read(0x0100 + ++sp);
     sr &= ~B;
@@ -547,10 +714,17 @@ uint8_t C6502::RTI() {
     return 0;
 }
 
+// Return from Subroutine
 uint8_t C6502::RTS() {
+    sp++;
+    pc = (uint16_t)read(0x0100 + sp);
+    sp++;
+    pc |= (uint16_t)read(0x0100 + sp) << 8;
+    pc++;
     return 0;
 }
 
+// Subtract with Carry
 uint8_t C6502::SBC() {
     fetch();
 
@@ -565,15 +739,21 @@ uint8_t C6502::SBC() {
     return 0;
 }
 
+// Set Carry Flag
 uint8_t C6502::SEC() {
+    SetFlag(C, 1);
     return 0;
 }
 
+// Set Decimal Flag
 uint8_t C6502::SED() {
+    SetFlag(D, 1);
     return 0;
 }
 
+// Set Interrupt Disable
 uint8_t C6502::SEI() {
+    SetFlag(I, 1);
     return 0;
 }
 
@@ -581,15 +761,21 @@ uint8_t C6502::SMB() {
     return 0;
 }
 
+// Store Accumulator
 uint8_t C6502::STA() {
+    write(addrAbs, ar);
     return 0;
 }
 
+// Store X Register
 uint8_t C6502::STX() {
+    write(addrAbs, x);
     return 0;
 }
 
+// Store Y Register
 uint8_t C6502::STY() {
+    write(addrAbs, y);
     return 0;
 }
 
@@ -597,11 +783,19 @@ uint8_t C6502::STZ() {
     return 0;
 }
 
+// Transfer Accumulator to X
 uint8_t C6502::TAX() {
+    x = ar;
+    SetFlag(Z, x == 0x00);
+    SetFlag(N, x & 0x80);
     return 0;
 }
 
+// Transfer Accumulator to Y
 uint8_t C6502::TAY() {
+    y = ar;
+    SetFlag(Z, y == 0x00);
+    SetFlag(N, y == 0x80);
     return 0;
 }
 
@@ -613,19 +807,33 @@ uint8_t C6502::TSB() {
     return 0;
 }
 
+// Transfer Stack Pointer to X
 uint8_t C6502::TSX() {
+    x = sp;
+    SetFlag(Z, x == 0x00);
+    SetFlag(N, x & 0x80);
     return 0;
 }
 
+// Transfer X to Accumulator
 uint8_t C6502::TXA() {
+    ar = x;
+    SetFlag(Z, x == 0x00);
+    SetFlag(N, x & 0x80);
     return 0;
 }
 
+// Transfer X to Stack Pointer
 uint8_t C6502::TXS() {
+    sp = x;
     return 0;
 }
 
+// Transfer Y to Accumulator
 uint8_t C6502::TYA() {
+    ar = y;
+    SetFlag(Z, y == 0x00);
+    SetFlag(N, y & 0x80);
     return 0;
 }
 
